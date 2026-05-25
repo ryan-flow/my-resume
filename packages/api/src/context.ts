@@ -12,6 +12,27 @@ interface ORPCContext {
 	resHeaders?: Headers;
 }
 
+// --- Single-user mode: guest user ID ---
+const GUEST_USER_ID = "guest-wz-001";
+
+async function getOrCreateGuestUser(): Promise<User> {
+	const [existing] = await db.select().from(user).where(eq(user.id, GUEST_USER_ID)).limit(1);
+	if (existing) return existing;
+
+	const [created] = await db
+		.insert(user)
+		.values({
+			id: GUEST_USER_ID,
+			name: "王子轩",
+			email: "wangzixuan@local.host",
+			emailVerified: true,
+			username: "wangzixuan",
+			displayUsername: "wangzixuan",
+		})
+		.returning();
+	return created;
+}
+
 async function getUserFromBearerToken(headers: Headers): Promise<User | null> {
 	try {
 		const authHeader = headers.get("authorization");
@@ -22,8 +43,7 @@ async function getUserFromBearerToken(headers: Headers): Promise<User | null> {
 
 		const [userResult] = await db.select().from(user).where(eq(user.id, payload.sub)).limit(1);
 		return userResult ?? null;
-	} catch (error) {
-		console.warn("Bearer token verification failed:", error);
+	} catch (_error) {
 		return null;
 	}
 }
@@ -32,10 +52,8 @@ async function getUserFromHeaders(headers: Headers): Promise<User | null> {
 	try {
 		const result = await auth.api.getSession({ headers });
 		if (!result?.user) return null;
-
 		return result.user;
-	} catch (error) {
-		console.warn("Session verification failed:", error);
+	} catch (_error) {
 		return null;
 	}
 }
@@ -44,24 +62,13 @@ async function getUserFromApiKey(apiKey: string): Promise<User | null> {
 	try {
 		const result = await auth.api.verifyApiKey({ body: { key: apiKey } });
 		if (!result.key || !result.valid) return null;
-
 		const [userResult] = await db.select().from(user).where(eq(user.id, result.key.referenceId)).limit(1);
-		if (!userResult) return null;
-
-		return userResult;
-	} catch (error) {
-		console.warn("API key verification failed:", error);
+		return userResult ?? null;
+	} catch (_error) {
 		return null;
 	}
 }
 
-/**
- * Resolve the authenticated user from the same headers oRPC uses (`x-api-key`,
- * `Authorization: Bearer`, or session cookies). Tries each auth method in
- * priority order and returns the first valid identity. Used directly by
- * oRPC's `publicProcedure` and by callers outside oRPC handlers (e.g. MCP
- * tools) where `context.user` is not in scope.
- */
 export async function resolveUserFromRequestHeaders(headers: Headers): Promise<User | null> {
 	const apiKey = headers.get("x-api-key");
 	if (apiKey) {
@@ -71,30 +78,23 @@ export async function resolveUserFromRequestHeaders(headers: Headers): Promise<U
 		const bearerUser = await getUserFromBearerToken(headers);
 		if (bearerUser) return bearerUser;
 	}
-
 	return getUserFromHeaders(headers);
 }
 
 const base = os.$context<ORPCContext>();
 
 export const publicProcedure = base.use(async ({ context, next }) => {
-	const user = await resolveUserFromRequestHeaders(context.reqHeaders);
+	let user = await resolveUserFromRequestHeaders(context.reqHeaders);
 
-	return next({
-		context: {
-			...context,
-			user,
-		},
-	});
+	// Single-user mode: if no auth found, fall back to guest user
+	if (!user) {
+		user = await getOrCreateGuestUser();
+	}
+
+	return next({ context: { ...context, user } });
 });
 
 export const protectedProcedure = publicProcedure.use(async ({ context, next }) => {
 	if (!context.user) throw new ORPCError("UNAUTHORIZED");
-
-	return next({
-		context: {
-			...context,
-			user: context.user,
-		},
-	});
+	return next({ context: { ...context, user: context.user } });
 });
