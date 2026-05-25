@@ -1,6 +1,6 @@
 {
-	"name": "reactive-resume",
-	"description": "Reactive Resume is a free and open-source resume builder that simplifies the process of creating, updating, and sharing your resume.",
+	"name": "my-resume",
+	"description": "AI 驱动的简历构建器 — 支持 DeepSeek AI、多模板、PDF/JSON/DOCX 导出。基于 Reactive Resume 定制。",
 	"version": "5.1.5",
 	"private": true,
 	"license": "MIT",

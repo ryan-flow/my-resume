@@ -8,6 +8,7 @@ const AI_PROVIDERS = [
 	"openrouter",
 	"ollama",
 	"openai-compatible",
+	"deepseek",
 ] as const;
 
 export type AIProvider = (typeof AI_PROVIDERS)[number];
@@ -22,4 +23,5 @@ export const AI_PROVIDER_DEFAULT_BASE_URLS: Record<AIProvider, string> = {
 	openrouter: "https://openrouter.ai/api/v1",
 	ollama: "https://ollama.com/api",
 	"openai-compatible": "",
+	deepseek: "https://api.deepseek.com",
 };
