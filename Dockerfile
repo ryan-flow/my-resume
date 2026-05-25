@@ -11,15 +11,12 @@ ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0 \
     PATH="/pnpm:$PATH" \
     TURBO_TELEMETRY_DISABLED=1
 
-RUN corepack enable \
-    && echo "registry=https://registry.npmmirror.com" > .npmrc \
-    && pnpm config set registry https://registry.npmmirror.com
+RUN corepack enable
 
 FROM base AS pruner
 COPY . .
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store,sharing=locked \
-    cp .npmrc /app/.npmrc 2>/dev/null || true \
-    && pnpm dlx turbo@2.9.12 prune web server --docker
+    pnpm dlx turbo@2.9.12 prune web server --docker
 
 FROM base AS builder
 COPY --from=pruner /app/out/json/ ./
@@ -33,8 +30,7 @@ RUN rm -rf apps/web/dist apps/server/dist && pnpm turbo run build --filter=web -
 FROM base AS runtime-pruner
 COPY . .
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store,sharing=locked \
-    cp .npmrc /app/.npmrc 2>/dev/null || true \
-    && pnpm dlx turbo@2.9.12 prune server --docker
+    pnpm dlx turbo@2.9.12 prune server --docker
 
 FROM base AS runtime-deps
 COPY --from=runtime-pruner /app/out/json/ ./
