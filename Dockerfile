@@ -9,7 +9,8 @@ WORKDIR /app
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0 \
     PNPM_HOME="/pnpm" \
     PATH="/pnpm:$PATH" \
-    TURBO_TELEMETRY_DISABLED=1
+    TURBO_TELEMETRY_DISABLED=1 \
+    npm_config_registry="https://registry.npmmirror.com"
 
 RUN corepack enable
 
@@ -40,14 +41,11 @@ RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store,sharing=locked \
 
 FROM node:${NODE_VERSION}-slim AS runtime
 
-LABEL maintainer="amruthpillai"
+LABEL maintainer="ryan-flow"
 LABEL org.opencontainers.image.licenses="MIT"
-LABEL org.opencontainers.image.title="Reactive Resume"
-LABEL org.opencontainers.image.description="A free and open-source resume builder."
-LABEL org.opencontainers.image.vendor="Amruth Pillai"
-LABEL org.opencontainers.image.url="https://rxresu.me"
-LABEL org.opencontainers.image.documentation="https://docs.rxresu.me"
-LABEL org.opencontainers.image.source="https://github.com/amruthpillai/reactive-resume"
+LABEL org.opencontainers.image.title="我的简历 — AI 简历构建器"
+LABEL org.opencontainers.image.description="AI 驱动的简历构建器，支持 DeepSeek AI、多模板、PDF/JSON/DOCX 导出"
+LABEL org.opencontainers.image.source="https://github.com/ryan-flow/my-resume"
 
 ENV NODE_ENV="production" \
     PORT=3000 \
